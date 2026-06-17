@@ -33,6 +33,19 @@ Adapter and integration tests follow after the port interface is defined — the
 - **Command Query Separation:** Methods either mutate state (commands, return nothing) or return data (queries, cause no side effects) — never both. This is especially important for the core domain where state transitions must be explicit and auditable.
 - **Dependency direction:** Dependencies always point inward — adapters depend on ports, ports depend on the core domain, the core domain depends on nothing external.
 
+## Continuous Integration
+
+The deployment target is a **Docker container**. CI is the gate that proves the image is safe to ship.
+
+A passing CI pipeline is required before any branch can be merged to `main`. The pipeline must:
+
+1. **Unit tests** — run all domain tests; any failure blocks the merge.
+2. **Linting** — enforce code style (e.g. `ruff check .`); fail on violations.
+3. **Type checking** — run `mypy` (or `pyright`) across the codebase; fail on errors.
+4. **Docker build** — build the container image to confirm it assembles cleanly.
+
+Domain tests must be runnable inside the Docker image without Isaac Sim or a live ROS 2 environment — this is a direct consequence of the hexagonal architecture keeping the core domain dependency-free.
+
 ## Technology Stack
 
 - **NVIDIA Isaac Sim** — physics simulation, photorealistic rendering, robot articulation
