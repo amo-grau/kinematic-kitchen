@@ -1,31 +1,88 @@
-# 🍔 Kinematic Kitchen
+# Kinematic Kitchen
 
-**Kinematic Kitchen** is an advanced robotics simulation project that creates a digital twin of a high-throughput fast-food restaurant. Leveraging **NVIDIA Isaac Sim** for high-fidelity physics and rendering, and **ROS 2** for robotic control and middleware, this project automates the end-to-end pipeline of burger assembly.
+Kinematic Kitchen is a robotics simulation of a high-throughput fast-food restaurant (digital twin). It automates the end-to-end burger assembly pipeline using **NVIDIA Isaac Sim** for physics and rendering and **ROS 2** for robot control.
 
-Unlike monolithic simulation scripts, Kinematic Kitchen strictly adheres to **Hexagonal Architecture (Ports and Adapters)**. By isolating the core business logic—such as order management, cooking times, and recipe states—from the simulation environment and ROS middleware, the system remains highly modular, testable, and hardware-agnostic.
+The project is built on **Hexagonal Architecture (Ports and Adapters)**, which keeps the kitchen's business logic completely isolated from the simulation environment and robot hardware. The core domain never imports Isaac Sim or ROS 2 — all technology coupling is confined to adapters.
 
-## 🛠️ Core Technologies
-*   **NVIDIA Isaac Sim:** Provides photorealistic rendering, accurate rigid-body physics, and robot articulation.
-*   **ROS 2:** Handles inter-node communication, trajectory planning, and robot control interfaces.
-*   **Hexagonal Architecture:** 
-    *   **Core Domain:** Kitchen state machine, recipe logic, and order queuing.
-    *   **Ports:** Interfaces defining how the kitchen interacts with the physical/simulated world.
-    *   **Adapters:** ROS 2 action clients, Isaac Sim bridges, and UI controllers that plug into the core domain.
+## Architecture
 
-## 🎯 Project Goals
-1.  **Digital Twin Automation:** Simulate a complete Quick Service Restaurant (QSR) environment.
-2.  **Robotic Manipulation:** Automate tasks like flipping patties, moving buns, and packaging orders using simulated robotic arms and end-effectors.
-3.  **Modular Engineering:** Prove that complex robotic simulations can maintain clean, decoupled software architecture.
+The codebase is split into four packages at the root level:
 
+```
+hexagon/            — core domain: orders, recipes, kitchen state machine
+driven_adapters/    — outbound adapters: persistence, robot notification, ID generation
+driving_adapters/   — inbound adapters: CLI, ROS 2 nodes (future)
+configuration/      — composition root: wires all adapters into the hexagon and runs the app
+```
 
+### Hexagon
+
+The hexagon contains everything that is true regardless of technology:
+
+- `hexagon/order.py` — the `Order` entity with its status machine (PENDING → IN_PROGRESS → COMPLETE)
+- `hexagon/use_cases/` — one class per use case; each implements a driving port and depends only on driven ports
+- `hexagon/driving_ports/` — abstract interfaces the outside world calls into the hexagon (e.g. `forSubmittingOrders`)
+- `hexagon/driven_ports/` — abstract interfaces the hexagon calls out to infrastructure (e.g. `forPersistingOrders`, `forPreparingOrders`, `forGeneratingIds`)
+
+No class inside `hexagon/` may import from `driven_adapters/`, `driving_adapters/`, or any external library. Non-deterministic concerns (ID generation, clocks) are driven ports injected at startup — never called directly.
+
+### Adapters
+
+Driven adapters implement driven ports and live under `driven_adapters/<port>/`:
+
+| Adapter | Port | Technology |
+|---|---|---|
+| `forPersistingOrdersWithMemory` | `forPersistingOrders` | in-memory dict |
+| `forPreparingOrdersWithIsaacSim` | `forPreparingOrders` | Isaac Sim stub |
+| `forGeneratingIdsWithUuid` | `forGeneratingIds` | `uuid4` |
+
+Driving adapters hold a driving port and trigger the hexagon from the outside. They live under `driving_adapters/<port>/`:
+
+| Adapter | Port | Technology |
+|---|---|---|
+| `CliAdapter` | `forSubmittingOrders` | stdin / stdout |
+
+### Configuration
+
+`configuration/startup.py` is the composition root. It is the only place in the codebase that knows about all layers simultaneously. Its job is to instantiate adapters, inject them into the use cases, and start the driving adapter. Swapping a technology (e.g. replacing the in-memory store with a database) means changing one line here.
+
+### Dependency flow
+
+```
+kinematic_kitchen  →  configuration
+                            │
+                ┌───────────┼───────────┐
+                ▼           ▼           ▼
+        driving_adapters  hexagon  driven_adapters
+                            │
+                    (ports only — no concrete imports)
+```
+
+Dependencies always point inward. The hexagon depends on nothing outside itself.
+
+## Running the app
+
+```bash
+python -m kinematic_kitchen submit "patty,bun,sauce"
+```
+
+This submits an order through the full stack and prints the generated order ID alongside a confirmation that the robot was notified.
 
 ## Development
 
 ```bash
-make install   # set up virtualenv and install dev dependencies
-make test      # run domain tests
-make lint      # check code style
-make typecheck # run static type checker
+make install     # create .venv and install dev dependencies
+make test        # run all tests
+make lint        # check code style (ruff)
+make typecheck   # run static type checker (mypy)
+make docker-build  # build the Docker image
+make docker-test   # run the test suite inside Docker
 ```
 
-CI runs automatically on every pull request. A passing pipeline (lint + typecheck + tests + Docker build) is required before merging to main.
+Tests are organised to mirror the source:
+
+- `hexagon_tests/` — domain and use case tests (no infrastructure)
+- `driven_adapters_tests/` — adapter tests exercised through the port interface
+- `driving_adapters_tests/` — CLI and future driving adapter tests
+
+CI runs automatically on every pull request to `develop` and `main`. A passing pipeline (lint + typecheck + tests + Docker build) is required before merging.
