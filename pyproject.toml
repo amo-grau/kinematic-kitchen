@@ -16,7 +16,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["hexagon", "driven_adapters", "driving_adapters", "configuration"]
+packages = ["hexagon", "driven_adapters", "driving_adapters", "configuration", "kinematic_kitchen"]
 
 [tool.ruff]
 line-length = 88
@@ -31,4 +31,4 @@ strict = true
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["hexagon_tests", "driven_adapters_tests"]
+testpaths = ["hexagon_tests", "driven_adapters_tests", "driving_adapters_tests"]
