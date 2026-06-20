@@ -31,4 +31,4 @@ strict = true
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["hexagon_tests"]
+testpaths = ["hexagon_tests", "driven_adapters_tests"]
