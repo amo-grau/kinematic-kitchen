@@ -21,6 +21,8 @@ The project follows **Hexagonal Architecture (Ports and Adapters)** with three e
 
 The key invariant: core business logic (cooking times, recipe states, order management) must never import ROS or Isaac Sim directly. All simulation/hardware coupling flows through adapters that implement the port interfaces.
 
+**Any non-deterministic or infrastructure concern — ID generation, clocks, randomness — must be extracted to a driven port and injected.** Calling `uuid4()`, `datetime.now()`, or `random` directly inside the hexagon is forbidden: it creates hidden dependencies that make the domain untestable and breaks the dependency rule.
+
 ## Test-Driven Development
 
 Domain code (core state machine, recipe logic, order queuing) must be written test-first: write a failing test, make it pass with the minimal implementation, then refactor. No domain class or method should exist without a corresponding test written before it.
