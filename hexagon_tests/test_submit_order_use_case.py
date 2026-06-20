@@ -2,6 +2,7 @@ import pytest
 
 from hexagon.driven_ports.for_generating_ids import forGeneratingIds
 from hexagon.driven_ports.for_persisting_orders import forPersistingOrders
+from hexagon.driven_ports.for_preparing_orders import forPreparingOrders
 from hexagon.driving_ports.for_submitting_orders import forSubmittingOrders
 from hexagon.order import Order, OrderStatus
 from hexagon.use_cases.submit_order import SubmitOrderUseCase
@@ -22,6 +23,14 @@ class FakeOrderRepository(forPersistingOrders):
         return list(self._store.values())
 
 
+class FakeOrderPreparation(forPreparingOrders):
+    def __init__(self) -> None:
+        self.prepared_orders: list[Order] = []
+
+    def prepare(self, order: Order) -> None:
+        self.prepared_orders.append(order)
+
+
 class SequentialIdGenerator(forGeneratingIds):
     def __init__(self) -> None:
         self._counter = 0
@@ -31,14 +40,19 @@ class SequentialIdGenerator(forGeneratingIds):
         return f"order-{self._counter}"
 
 
-def make_use_case() -> tuple[forSubmittingOrders, FakeOrderRepository]:
+UseCaseFixture = tuple[forSubmittingOrders, FakeOrderRepository, FakeOrderPreparation]
+
+
+def make_use_case() -> UseCaseFixture:
     repository = FakeOrderRepository()
+    preparation = FakeOrderPreparation()
     id_generator = SequentialIdGenerator()
-    return SubmitOrderUseCase(repository, id_generator), repository
+    use_case = SubmitOrderUseCase(repository, id_generator, preparation)
+    return use_case, repository, preparation
 
 
 def test_submit_order_persists_the_order() -> None:
-    use_case, repository = make_use_case()
+    use_case, repository, _ = make_use_case()
 
     use_case.submit_order(["burger", "fries"])
 
@@ -46,7 +60,7 @@ def test_submit_order_persists_the_order() -> None:
 
 
 def test_submitted_order_has_correct_items() -> None:
-    use_case, repository = make_use_case()
+    use_case, repository, _ = make_use_case()
 
     use_case.submit_order(["burger", "fries"])
 
@@ -54,7 +68,7 @@ def test_submitted_order_has_correct_items() -> None:
 
 
 def test_submitted_order_starts_as_pending() -> None:
-    use_case, repository = make_use_case()
+    use_case, repository, _ = make_use_case()
 
     use_case.submit_order(["burger"])
 
@@ -62,7 +76,7 @@ def test_submitted_order_starts_as_pending() -> None:
 
 
 def test_submitted_order_can_be_retrieved_by_id() -> None:
-    use_case, repository = make_use_case()
+    use_case, repository, _ = make_use_case()
 
     use_case.submit_order(["burger"])
 
@@ -71,7 +85,7 @@ def test_submitted_order_can_be_retrieved_by_id() -> None:
 
 
 def test_each_submitted_order_gets_a_unique_id() -> None:
-    use_case, repository = make_use_case()
+    use_case, repository, _ = make_use_case()
 
     use_case.submit_order(["burger"])
     use_case.submit_order(["fries"])
@@ -80,8 +94,24 @@ def test_each_submitted_order_gets_a_unique_id() -> None:
     assert ids[0] != ids[1]
 
 
+def test_submit_order_notifies_preparation() -> None:
+    use_case, _, preparation = make_use_case()
+
+    use_case.submit_order(["burger"])
+
+    assert len(preparation.prepared_orders) == 1
+
+
+def test_preparation_receives_order_with_submitted_items() -> None:
+    use_case, _, preparation = make_use_case()
+
+    use_case.submit_order(["burger"])
+
+    assert preparation.prepared_orders[0].items == ["burger"]
+
+
 def test_submit_order_raises_for_empty_items() -> None:
-    use_case, _ = make_use_case()
+    use_case, _, _ = make_use_case()
 
     with pytest.raises(ValueError):
         use_case.submit_order([])
