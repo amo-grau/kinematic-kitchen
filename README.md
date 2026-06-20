@@ -16,3 +16,16 @@ Unlike monolithic simulation scripts, Kinematic Kitchen strictly adheres to **He
 1.  **Digital Twin Automation:** Simulate a complete Quick Service Restaurant (QSR) environment.
 2.  **Robotic Manipulation:** Automate tasks like flipping patties, moving buns, and packaging orders using simulated robotic arms and end-effectors.
 3.  **Modular Engineering:** Prove that complex robotic simulations can maintain clean, decoupled software architecture.
+
+
+
+## Development
+
+```bash
+make install   # set up virtualenv and install dev dependencies
+make test      # run domain tests
+make lint      # check code style
+make typecheck # run static type checker
+```
+
+CI runs automatically on every pull request. A passing pipeline (lint + typecheck + tests + Docker build) is required before merging to main.
