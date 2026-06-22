@@ -28,7 +28,7 @@ select = ["E", "F", "I"]
 [tool.ruff.lint.per-file-ignores]
 # Isaac Sim requires SimulationApp to be instantiated before any Omniverse
 # or ROS 2 imports, so E402 is expected in all Isaac Sim entry-point scripts.
-"assets/simulation/*.py" = ["E402"]
+"assets/simulation/*.py" = ["E402", "I001"]
 
 [tool.mypy]
 python_version = "3.10"
