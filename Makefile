@@ -2,7 +2,7 @@ VENV := .venv
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 
-.PHONY: install lint typecheck typecheck-domain test test-domain docker-build docker-test
+.PHONY: install lint lint-domain typecheck typecheck-domain test test-domain docker-build docker-test
 
 # --system-site-packages lets the venv see apt-installed packages (numpy, yaml)
 # that ROS 2's rclpy depends on, so the Isaac Sim adapter tests can run locally
@@ -15,6 +15,9 @@ install: $(VENV)
 
 lint:
 	$(VENV)/bin/ruff check .
+
+lint-domain:
+	$(VENV)/bin/ruff check hexagon hexagon_tests
 
 typecheck:
 	$(VENV)/bin/mypy hexagon driven_adapters driving_adapters configuration
