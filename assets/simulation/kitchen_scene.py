@@ -17,7 +17,7 @@ import sys
 import carb
 from isaacsim.simulation_app import SimulationApp
 
-simulation_app = SimulationApp({"headless": True})
+simulation_app = SimulationApp({"headless": False})
 
 # All Omniverse imports must come after SimulationApp is instantiated.
 import numpy as np
