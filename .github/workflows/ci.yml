@@ -20,13 +20,13 @@ jobs:
         run: make install
 
       - name: Lint
-        run: make lint
+        run: make lint-domain
 
       - name: Type check
-        run: make typecheck
+        run: make typecheck-domain
 
       - name: Test
-        run: make test
+        run: make test-domain
 
       - name: Build Docker image
         run: docker build -t kinematic-kitchen .
